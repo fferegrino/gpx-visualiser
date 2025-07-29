@@ -3,7 +3,10 @@ class GPXLoader {
         this.dropZone = document.getElementById('dropZone');
         this.fileInput = document.getElementById('fileInput');
         this.fileInfo = document.getElementById('fileInfo');
+        this.mapSection = document.getElementById('mapSection');
         this.trackData = document.getElementById('trackData');
+        this.map = null;
+        this.trackLayers = [];
         
         this.initializeEventListeners();
     }
@@ -55,6 +58,7 @@ class GPXLoader {
             const gpxData = this.parseGPX(text);
             
             this.displayFileInfo(file, gpxData);
+            this.initializeMap(gpxData);
             this.displayTrackData(gpxData);
             
         } catch (error) {
@@ -181,6 +185,108 @@ class GPXLoader {
             return (km * 1000).toFixed(0) + ' m';
         }
         return km.toFixed(2) + ' km';
+    }
+    
+    initializeMap(gpxData) {
+        // Clear existing map if any
+        if (this.map) {
+            this.map.remove();
+            this.trackLayers = [];
+        }
+        
+        // Show map section
+        this.mapSection.style.display = 'block';
+        
+        // Initialize map
+        this.map = L.map('map').setView([0, 0], 13);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(this.map);
+        
+        // Plot tracks on map
+        this.plotTracksOnMap(gpxData);
+    }
+    
+    plotTracksOnMap(gpxData) {
+        if (!gpxData || gpxData.length === 0) return;
+        
+        const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
+        let bounds = L.latLngBounds();
+        
+        gpxData.forEach((track, trackIndex) => {
+            const color = colors[trackIndex % colors.length];
+            
+            track.segments.forEach((segment, segmentIndex) => {
+                if (segment.length < 2) return;
+                
+                // Convert track points to latlng array
+                const latlngs = segment.map(point => [point.lat, point.lon]);
+                
+                // Create polyline for this segment
+                const polyline = L.polyline(latlngs, {
+                    color: color,
+                    weight: 4,
+                    opacity: 0.8
+                }).addTo(this.map);
+                
+                // Add start marker
+                const startPoint = latlngs[0];
+                const startMarker = L.marker(startPoint, {
+                    icon: L.divIcon({
+                        className: 'start-marker',
+                        html: `<div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                        iconSize: [12, 12],
+                        iconAnchor: [6, 6]
+                    })
+                }).addTo(this.map);
+                
+                // Add end marker
+                const endPoint = latlngs[latlngs.length - 1];
+                const endMarker = L.marker(endPoint, {
+                    icon: L.divIcon({
+                        className: 'end-marker',
+                        html: `<div style="background-color: #ff4757; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                        iconSize: [12, 12],
+                        iconAnchor: [6, 6]
+                    })
+                }).addTo(this.map);
+                
+                // Add popup with track info
+                const distance = this.calculateSegmentDistance(segment);
+                const popupContent = `
+                    <div style="min-width: 200px;">
+                        <h4 style="margin: 0 0 8px 0; color: ${color};">${track.name}</h4>
+                        <p style="margin: 4px 0;"><strong>Segment:</strong> ${segmentIndex + 1}</p>
+                        <p style="margin: 4px 0;"><strong>Points:</strong> ${segment.length}</p>
+                        <p style="margin: 4px 0;"><strong>Distance:</strong> ${this.formatDistance(distance)}</p>
+                    </div>
+                `;
+                
+                polyline.bindPopup(popupContent);
+                
+                // Extend bounds
+                bounds.extend(latlngs);
+                
+                this.trackLayers.push(polyline, startMarker, endMarker);
+            });
+        });
+        
+        // Fit map to show all tracks
+        if (bounds.isValid()) {
+            this.map.fitBounds(bounds, { padding: [10, 10] });
+        }
+    }
+    
+    calculateSegmentDistance(segment) {
+        let distance = 0;
+        for (let i = 1; i < segment.length; i++) {
+            const prev = segment[i - 1];
+            const curr = segment[i];
+            distance += this.calculateDistance(prev.lat, prev.lon, curr.lat, curr.lon);
+        }
+        return distance;
     }
     
     displayFileInfo(file, gpxData) {

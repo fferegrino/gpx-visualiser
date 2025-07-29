@@ -5,6 +5,11 @@ A simple web application to load and view GPX (GPS Exchange Format) files. This 
 ## Features
 
 - **Drag & Drop Support**: Simply drag and drop GPX files onto the upload area
+- **Interactive Map Visualization**: View your tracks on an interactive map with:
+  - Color-coded track segments
+  - Start and end markers
+  - Popup information for each track
+  - Automatic map fitting to show all tracks
 - **File Information**: View file details including size, number of track points, and total distance
 - **Track Data Display**: See detailed information about each track point including:
   - Latitude and longitude coordinates
@@ -38,6 +43,8 @@ gpx-animator/
 The application uses:
 - **HTML5 File API** for file reading
 - **DOMParser** for XML parsing
+- **Leaflet.js** for interactive map visualization
+- **OpenStreetMap** tiles for map data
 - **Haversine formula** for distance calculations
 - **Modern CSS** with flexbox and grid layouts
 - **Vanilla JavaScript** with ES6+ features
