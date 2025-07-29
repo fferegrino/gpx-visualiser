@@ -249,6 +249,7 @@ class GPXLoader {
     prepareAnimationData(gpxData) {
         this.allPoints = [];
         this.currentPointIndex = 0;
+        this.interpolatedPoints = [];
         
         // Flatten all track points into a single array
         gpxData.forEach(track => {
@@ -264,9 +265,15 @@ class GPXLoader {
             });
         });
         
+        // Create interpolated points based on timestamps
+        this.createInterpolatedPoints();
+        
+        // Display timing information
+        this.displayTimingInfo();
+        
         // Create animation marker
-        if (this.allPoints.length > 0) {
-            const firstPoint = this.allPoints[0];
+        if (this.interpolatedPoints.length > 0) {
+            const firstPoint = this.interpolatedPoints[0];
             this.animationMarker = L.marker([firstPoint.lat, firstPoint.lon], {
                 icon: L.divIcon({
                     className: 'animation-marker',
@@ -278,8 +285,120 @@ class GPXLoader {
         }
     }
     
+    createInterpolatedPoints() {
+        this.interpolatedPoints = [];
+        
+        // Filter points that have timestamps
+        const pointsWithTime = this.allPoints.filter(point => point.time);
+        
+        if (pointsWithTime.length < 2) {
+            // If not enough points with time, use original points
+            this.interpolatedPoints = this.allPoints;
+            return;
+        }
+        
+        // Sort points by time
+        pointsWithTime.sort((a, b) => new Date(a.time) - new Date(b.time));
+        
+        // Calculate total duration
+        const startTime = new Date(pointsWithTime[0].time);
+        const endTime = new Date(pointsWithTime[pointsWithTime.length - 1].time);
+        const totalDuration = endTime - startTime;
+        
+        // Create interpolated points at regular intervals
+        const targetDuration = Math.min(totalDuration, 60000); // Max 1 minute for very long tracks
+        const intervalMs = Math.max(100, targetDuration / 200); // Max 200 points for smooth animation
+        
+        for (let currentTime = startTime.getTime(); currentTime <= endTime.getTime(); currentTime += intervalMs) {
+            const interpolatedPoint = this.interpolatePointAtTime(pointsWithTime, currentTime);
+            if (interpolatedPoint) {
+                this.interpolatedPoints.push(interpolatedPoint);
+            }
+        }
+        
+        // Add the final point if not already included
+        const lastPoint = pointsWithTime[pointsWithTime.length - 1];
+        if (this.interpolatedPoints.length === 0 || 
+            this.interpolatedPoints[this.interpolatedPoints.length - 1].time !== lastPoint.time) {
+            this.interpolatedPoints.push(lastPoint);
+        }
+    }
+    
+    interpolatePointAtTime(points, targetTime) {
+        // Find the two points that bracket the target time
+        let beforePoint = null;
+        let afterPoint = null;
+        
+        for (let i = 0; i < points.length - 1; i++) {
+            const currentTime = new Date(points[i].time).getTime();
+            const nextTime = new Date(points[i + 1].time).getTime();
+            
+            if (targetTime >= currentTime && targetTime <= nextTime) {
+                beforePoint = points[i];
+                afterPoint = points[i + 1];
+                break;
+            }
+        }
+        
+        if (!beforePoint || !afterPoint) {
+            return null;
+        }
+        
+        // Calculate interpolation factor
+        const beforeTime = new Date(beforePoint.time).getTime();
+        const afterTime = new Date(afterPoint.time).getTime();
+        const factor = (targetTime - beforeTime) / (afterTime - beforeTime);
+        
+        // Interpolate position
+        const lat = beforePoint.lat + (afterPoint.lat - beforePoint.lat) * factor;
+        const lon = beforePoint.lon + (afterPoint.lon - beforePoint.lon) * factor;
+        
+        // Interpolate elevation if available
+        let ele = null;
+        if (beforePoint.ele && afterPoint.ele) {
+            ele = parseFloat(beforePoint.ele) + (parseFloat(afterPoint.ele) - parseFloat(beforePoint.ele)) * factor;
+        }
+        
+        return {
+            lat: lat,
+            lon: lon,
+            ele: ele,
+            time: new Date(targetTime).toISOString()
+        };
+    }
+    
+    displayTimingInfo() {
+        const timingInfo = document.getElementById('timingInfo');
+        const durationValue = document.getElementById('durationValue');
+        const pointsValue = document.getElementById('pointsValue');
+        
+        if (this.interpolatedPoints.length > 0) {
+            const pointsWithTime = this.allPoints.filter(point => point.time);
+            
+            if (pointsWithTime.length >= 2) {
+                const startTime = new Date(pointsWithTime[0].time);
+                const endTime = new Date(pointsWithTime[pointsWithTime.length - 1].time);
+                const duration = endTime - startTime;
+                
+                // Format duration
+                const minutes = Math.floor(duration / 60000);
+                const seconds = Math.floor((duration % 60000) / 1000);
+                const durationText = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                
+                durationValue.textContent = durationText;
+                pointsValue.textContent = this.interpolatedPoints.length.toLocaleString();
+                
+                timingInfo.style.display = 'flex';
+            } else {
+                timingInfo.style.display = 'none';
+            }
+        } else {
+            timingInfo.style.display = 'none';
+        }
+    }
+    
     playAnimation() {
-        if (this.allPoints.length === 0 || this.isPlaying) return;
+        if (this.interpolatedPoints.length === 0 || this.isPlaying) return;
         
         this.isPlaying = true;
         document.getElementById('playButton').style.display = 'none';
@@ -288,17 +407,17 @@ class GPXLoader {
         const interval = Math.max(50, 1000 / this.animationSpeed); // Minimum 50ms interval
         
         this.animationInterval = setInterval(() => {
-            if (this.currentPointIndex >= this.allPoints.length) {
+            if (this.currentPointIndex >= this.interpolatedPoints.length) {
                 this.pauseAnimation();
                 return;
             }
             
-            const point = this.allPoints[this.currentPointIndex];
+            const point = this.interpolatedPoints[this.currentPointIndex];
             this.animationMarker.setLatLng([point.lat, point.lon]);
             
             // Zoom to the current point if auto-zoom is enabled
             if (this.autoZoom) {
-                this.map.setView([point.lat, point.lon], 20, {
+                this.map.setView([point.lat, point.lon], 25, {
                     animate: true,
                     duration: 0.5
                 });
@@ -323,8 +442,8 @@ class GPXLoader {
         this.pauseAnimation();
         this.currentPointIndex = 0;
         
-        if (this.allPoints.length > 0 && this.animationMarker) {
-            const firstPoint = this.allPoints[0];
+        if (this.interpolatedPoints.length > 0 && this.animationMarker) {
+            const firstPoint = this.interpolatedPoints[0];
             this.animationMarker.setLatLng([firstPoint.lat, firstPoint.lon]);
             
             // Reset map view to show all tracks
