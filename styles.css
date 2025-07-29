@@ -65,25 +65,25 @@ header p {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 0.5rem;
 }
 
 .upload-icon {
     width: 64px;
     height: 64px;
     color: #667eea;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
 }
 
 .drop-zone-content h3 {
-    font-size: 1.5rem;
+    font-size: 1rem;
     color: #333;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
 }
 
 .drop-zone-content p {
     color: #666;
-    font-size: 1rem;
+    font-size: 0.8rem;
 }
 
 .file-info, .track-data {
@@ -189,9 +189,11 @@ header p {
 }
 
 #map {
-    height: 500px;
-    width: 100%;
+    height: 600px;
+    width: 600px;
     border-radius: 8px;
+    margin: 0 auto;
+    display: block;
 }
 
 .track-header, .segment-header {
@@ -243,5 +245,6 @@ header p {
     
     #map {
         height: 300px;
+        width: 300px;
     }
 } 
