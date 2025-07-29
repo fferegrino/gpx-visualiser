@@ -181,6 +181,131 @@ header p {
     padding-bottom: 0.5rem;
 }
 
+.map-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    flex-wrap: wrap;
+}
+
+.control-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.control-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.play-btn {
+    background: #28a745;
+    color: white;
+}
+
+.play-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.pause-btn {
+    background: #ffc107;
+    color: #212529;
+}
+
+.pause-btn:hover {
+    background: #e0a800;
+    transform: translateY(-1px);
+}
+
+.reset-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.reset-btn:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+.speed-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.speed-control label {
+    font-weight: 600;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.speed-slider {
+    width: 100px;
+    height: 6px;
+    border-radius: 3px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.speed-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #667eea;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.speed-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #667eea;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+#speedValue {
+    font-weight: 600;
+    color: #667eea;
+    min-width: 30px;
+    text-align: center;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
 .map-container {
     position: relative;
     border-radius: 8px;
@@ -246,5 +371,20 @@ header p {
     #map {
         height: 300px;
         width: 300px;
+    }
+    
+    .map-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+    
+    .speed-control {
+        margin-left: 0;
+        justify-content: center;
+    }
+    
+    .control-btn {
+        justify-content: center;
     }
 } 

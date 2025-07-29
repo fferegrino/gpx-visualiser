@@ -8,6 +8,14 @@ class GPXLoader {
         this.map = null;
         this.trackLayers = [];
         
+        // Animation properties
+        this.animationMarker = null;
+        this.animationInterval = null;
+        this.currentPointIndex = 0;
+        this.allPoints = [];
+        this.isPlaying = false;
+        this.animationSpeed = 1;
+        
         this.initializeEventListeners();
     }
     
@@ -23,6 +31,27 @@ class GPXLoader {
         // Drop zone click
         this.dropZone.addEventListener('click', () => {
             this.fileInput.click();
+        });
+        
+        // Animation controls
+        document.getElementById('playButton').addEventListener('click', () => {
+            this.playAnimation();
+        });
+        
+        document.getElementById('pauseButton').addEventListener('click', () => {
+            this.pauseAnimation();
+        });
+        
+        document.getElementById('resetButton').addEventListener('click', () => {
+            this.resetAnimation();
+        });
+        
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            this.animationSpeed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = this.animationSpeed + 'x';
+            if (this.isPlaying) {
+                this.restartAnimation();
+            }
         });
         
         // Drag and drop events
@@ -207,6 +236,89 @@ class GPXLoader {
         
         // Plot tracks on map
         this.plotTracksOnMap(gpxData);
+        
+        // Prepare animation data
+        this.prepareAnimationData(gpxData);
+    }
+    
+    prepareAnimationData(gpxData) {
+        this.allPoints = [];
+        this.currentPointIndex = 0;
+        
+        // Flatten all track points into a single array
+        gpxData.forEach(track => {
+            track.segments.forEach(segment => {
+                segment.forEach(point => {
+                    this.allPoints.push({
+                        lat: point.lat,
+                        lon: point.lon,
+                        ele: point.ele,
+                        time: point.time
+                    });
+                });
+            });
+        });
+        
+        // Create animation marker
+        if (this.allPoints.length > 0) {
+            const firstPoint = this.allPoints[0];
+            this.animationMarker = L.marker([firstPoint.lat, firstPoint.lon], {
+                icon: L.divIcon({
+                    className: 'animation-marker',
+                    html: `<div style="background-color: #ff4757; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4); animation: pulse 1s infinite;"></div>`,
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                })
+            }).addTo(this.map);
+        }
+    }
+    
+    playAnimation() {
+        if (this.allPoints.length === 0 || this.isPlaying) return;
+        
+        this.isPlaying = true;
+        document.getElementById('playButton').style.display = 'none';
+        document.getElementById('pauseButton').style.display = 'flex';
+        
+        const interval = Math.max(50, 1000 / this.animationSpeed); // Minimum 50ms interval
+        
+        this.animationInterval = setInterval(() => {
+            if (this.currentPointIndex >= this.allPoints.length) {
+                this.pauseAnimation();
+                return;
+            }
+            
+            const point = this.allPoints[this.currentPointIndex];
+            this.animationMarker.setLatLng([point.lat, point.lon]);
+            
+            this.currentPointIndex++;
+        }, interval);
+    }
+    
+    pauseAnimation() {
+        this.isPlaying = false;
+        document.getElementById('playButton').style.display = 'flex';
+        document.getElementById('pauseButton').style.display = 'none';
+        
+        if (this.animationInterval) {
+            clearInterval(this.animationInterval);
+            this.animationInterval = null;
+        }
+    }
+    
+    resetAnimation() {
+        this.pauseAnimation();
+        this.currentPointIndex = 0;
+        
+        if (this.allPoints.length > 0 && this.animationMarker) {
+            const firstPoint = this.allPoints[0];
+            this.animationMarker.setLatLng([firstPoint.lat, firstPoint.lon]);
+        }
+    }
+    
+    restartAnimation() {
+        this.pauseAnimation();
+        this.playAnimation();
     }
     
     plotTracksOnMap(gpxData) {
