@@ -6,12 +6,14 @@ class GPXLoader {
         this.mapSection = document.getElementById('mapSection');
         this.trackData = document.getElementById('trackData');
         this.map = null;
+        this.mapContainer = document.getElementById('map');
         this.trackLayers = [];
         
         // Animation properties
         this.animationMarker = null;
         this.animationInterval = null;
         this.currentPointIndex = 0;
+        this.currentRotation = 0;
         this.allPoints = [];
         this.isPlaying = false;
         this.animationSpeed = 1;
@@ -397,6 +399,35 @@ class GPXLoader {
             time: new Date(targetTime).toISOString()
         };
     }
+
+    toRadians(degrees) {
+        return degrees * Math.PI / 180;
+    }
+    
+    toDegrees(radians) {
+        return radians * 180 / Math.PI;
+    }
+    
+    calculateBearing(lat1, lon1, lat2, lon2) {
+        // Convert to radians
+        const φ1 = this.toRadians(lat1);
+        const φ2 = this.toRadians(lat2);
+        const Δλ = this.toRadians(lon2 - lon1);
+    
+        const y = Math.sin(Δλ) * Math.cos(φ2);
+        const x = Math.cos(φ1) * Math.sin(φ2) -
+                  Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+    
+        const θ = Math.atan2(y, x); // Bearing in radians
+        const bearing = (this.toDegrees(θ) + 360) % 360; // Normalize to 0–360°
+        return bearing;
+    }
+    
+    calculateRotationAngle(lat1, lon1, lat2, lon2) {
+        const bearing = this.calculateBearing(lat1, lon1, lat2, lon2);
+        const rotation = -bearing; // Negative to rotate so the line points north
+        return rotation;
+    }
     
     displayTimingInfo() {
         const timingInfo = document.getElementById('timingInfo');
@@ -429,6 +460,7 @@ class GPXLoader {
     }
     
     playAnimation() {
+
         if (this.interpolatedPoints.length === 0 || this.isPlaying) return;
         
         this.isPlaying = true;
@@ -457,6 +489,12 @@ class GPXLoader {
                     animate: true,
                     duration: 0.5
                 });
+
+                let rotationAngle = this.calculateRotationAngle(point.lat, point.lon, this.interpolatedPoints[this.currentPointIndex + 1].lat, this.interpolatedPoints[this.currentPointIndex + 1].lon);
+                this.mapContainer.style.transform = `rotate(${rotationAngle}deg)`;
+
+                this.currentRotation = rotationAngle;
+
             }
             
             this.currentPointIndex++;
