@@ -15,6 +15,7 @@ class GPXLoader {
         this.allPoints = [];
         this.isPlaying = false;
         this.animationSpeed = 1;
+        this.autoZoom = true;
         
         this.initializeEventListeners();
     }
@@ -52,6 +53,10 @@ class GPXLoader {
             if (this.isPlaying) {
                 this.restartAnimation();
             }
+        });
+        
+        document.getElementById('autoZoomCheckbox').addEventListener('change', (e) => {
+            this.autoZoom = e.target.checked;
         });
         
         // Drag and drop events
@@ -291,6 +296,14 @@ class GPXLoader {
             const point = this.allPoints[this.currentPointIndex];
             this.animationMarker.setLatLng([point.lat, point.lon]);
             
+            // Zoom to the current point if auto-zoom is enabled
+            if (this.autoZoom) {
+                this.map.setView([point.lat, point.lon], 20, {
+                    animate: true,
+                    duration: 0.5
+                });
+            }
+            
             this.currentPointIndex++;
         }, interval);
     }
@@ -313,12 +326,31 @@ class GPXLoader {
         if (this.allPoints.length > 0 && this.animationMarker) {
             const firstPoint = this.allPoints[0];
             this.animationMarker.setLatLng([firstPoint.lat, firstPoint.lon]);
+            
+            // Reset map view to show all tracks
+            this.fitMapToTracks();
         }
     }
     
     restartAnimation() {
         this.pauseAnimation();
         this.playAnimation();
+    }
+    
+    fitMapToTracks() {
+        if (this.trackLayers.length > 0) {
+            const bounds = L.latLngBounds();
+            this.trackLayers.forEach(layer => {
+                if (layer.getLatLngs) {
+                    bounds.extend(layer.getLatLngs());
+                } else if (layer.getLatLng) {
+                    bounds.extend(layer.getLatLng());
+                }
+            });
+            if (!bounds.isEmpty()) {
+                this.map.fitBounds(bounds, { padding: [20, 20] });
+            }
+        }
     }
     
     plotTracksOnMap(gpxData) {
@@ -387,7 +419,7 @@ class GPXLoader {
         
         // Fit map to show all tracks
         if (bounds.isValid()) {
-            this.map.fitBounds(bounds, { padding: [10, 10] });
+            this.map.fitBounds(bounds, { padding: [20, 20] });
         }
     }
     
