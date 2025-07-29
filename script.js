@@ -17,6 +17,12 @@ class GPXLoader {
         this.animationSpeed = 1;
         this.autoZoom = true;
         
+        // Export properties
+        this.isExporting = false;
+        this.exportFrames = [];
+        this.exportCanvas = null;
+        this.exportContext = null;
+        
         this.initializeEventListeners();
     }
     
@@ -57,6 +63,10 @@ class GPXLoader {
         
         document.getElementById('autoZoomCheckbox').addEventListener('change', (e) => {
             this.autoZoom = e.target.checked;
+        });
+        
+        document.getElementById('exportButton').addEventListener('click', () => {
+            this.exportVideo();
         });
         
         // Drag and drop events
@@ -454,6 +464,195 @@ class GPXLoader {
     restartAnimation() {
         this.pauseAnimation();
         this.playAnimation();
+    }
+    
+    async exportVideo() {
+        if (this.isExporting || this.interpolatedPoints.length === 0) return;
+        
+        this.isExporting = true;
+        const exportButton = document.getElementById('exportButton');
+        const progressContainer = document.getElementById('exportProgress');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        
+        // Disable export button and show progress
+        exportButton.disabled = true;
+        progressContainer.style.display = 'flex';
+        
+        try {
+            // Initialize canvas for frame capture
+            this.initializeExportCanvas();
+            
+            // Capture frames
+            await this.captureFrames();
+            
+            // Create video from frames
+            await this.createVideoFromFrames();
+            
+            progressText.textContent = 'Export complete!';
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                exportButton.disabled = false;
+                this.isExporting = false;
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Export error:', error);
+            progressText.textContent = 'Export failed!';
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                exportButton.disabled = false;
+                this.isExporting = false;
+            }, 2000);
+        }
+    }
+    
+    initializeExportCanvas() {
+        const mapElement = document.getElementById('map');
+        const rect = mapElement.getBoundingClientRect();
+        
+        this.exportCanvas = document.createElement('canvas');
+        this.exportCanvas.width = rect.width;
+        this.exportCanvas.height = rect.height;
+        this.exportContext = this.exportCanvas.getContext('2d');
+    }
+    
+    async captureFrames() {
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const totalPoints = this.interpolatedPoints.length;
+        
+        // Reset animation state
+        this.currentPointIndex = 0;
+        this.pauseAnimation();
+        
+        for (let i = 0; i < totalPoints; i++) {
+            if (!this.isExporting) break;
+            
+            const point = this.interpolatedPoints[i];
+            
+            // Move marker to current point
+            this.animationMarker.setLatLng([point.lat, point.lon]);
+            
+            // Zoom if auto-zoom is enabled
+            if (this.autoZoom) {
+                this.map.setView([point.lat, point.lon], 25, {
+                    animate: false // Disable animation for faster capture
+                });
+            }
+            
+            // Wait for map to render
+            await this.waitForMapRender();
+            
+            // Capture frame
+            await this.captureFrame();
+            
+            // Update progress
+            const progress = ((i + 1) / totalPoints) * 100;
+            progressFill.style.width = progress + '%';
+            progressText.textContent = `Capturing frame ${i + 1}/${totalPoints}`;
+            
+            this.currentPointIndex++;
+        }
+    }
+    
+    async waitForMapRender() {
+        return new Promise(resolve => {
+            setTimeout(resolve, 100); // Wait for map tiles to load
+        });
+    }
+    
+    async captureFrame() {
+        return new Promise((resolve) => {
+            // Use html2canvas to capture the map
+            if (typeof html2canvas !== 'undefined') {
+                html2canvas(document.getElementById('map'), {
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: null
+                }).then(canvas => {
+                    this.exportFrames.push(canvas);
+                    resolve();
+                });
+            } else {
+                // Fallback: create a simple colored frame
+                const canvas = document.createElement('canvas');
+                canvas.width = this.exportCanvas.width;
+                canvas.height = this.exportCanvas.height;
+                const ctx = canvas.getContext('2d');
+                
+                // Create a simple frame with map-like background
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Add some text to indicate this is a fallback
+                ctx.fillStyle = '#666';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Map capture not available', canvas.width / 2, canvas.height / 2);
+                
+                this.exportFrames.push(canvas);
+                resolve();
+            }
+        });
+    }
+    
+    async createVideoFromFrames() {
+        const progressText = document.getElementById('progressText');
+        progressText.textContent = 'Creating video...';
+        
+        if (this.exportFrames.length === 0) {
+            throw new Error('No frames captured');
+        }
+        
+        // Create a simple video using MediaRecorder API
+        const canvas = this.exportFrames[0];
+        const stream = canvas.captureStream(30); // 30 FPS
+        
+        const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm;codecs=vp9'
+        });
+        
+        const chunks = [];
+        
+        return new Promise((resolve, reject) => {
+            mediaRecorder.ondataavailable = (event) => {
+                chunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                
+                // Create download link
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'gpx-animation.webm';
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                resolve();
+            };
+            
+            mediaRecorder.start();
+            
+            // Play frames
+            let frameIndex = 0;
+            const playNextFrame = () => {
+                if (frameIndex >= this.exportFrames.length) {
+                    mediaRecorder.stop();
+                    return;
+                }
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(this.exportFrames[frameIndex], 0, 0);
+                frameIndex++;
+                
+                setTimeout(playNextFrame, 1000 / 30); // 30 FPS
+            };
+            
+            playNextFrame();
+        });
     }
     
     fitMapToTracks() {
