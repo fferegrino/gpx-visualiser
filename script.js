@@ -16,12 +16,17 @@ class GPXLoader {
         this.isPlaying = false;
         this.animationSpeed = 1;
         this.autoZoom = true;
+        this.showTrail = true;
         
         // Export properties
         this.isExporting = false;
         this.exportFrames = [];
         this.exportCanvas = null;
         this.exportContext = null;
+        
+        // Trail properties
+        this.trailPolyline = null;
+        this.trailPoints = [];
         
         this.initializeEventListeners();
     }
@@ -63,6 +68,13 @@ class GPXLoader {
         
         document.getElementById('autoZoomCheckbox').addEventListener('change', (e) => {
             this.autoZoom = e.target.checked;
+        });
+        
+        document.getElementById('trailCheckbox').addEventListener('change', (e) => {
+            this.showTrail = e.target.checked;
+            if (this.trailPolyline) {
+                this.trailPolyline.setStyle({ opacity: this.showTrail ? 0.8 : 0 });
+            }
         });
         
         document.getElementById('exportButton').addEventListener('click', () => {
@@ -281,7 +293,7 @@ class GPXLoader {
         // Display timing information
         this.displayTimingInfo();
         
-        // Create animation marker
+        // Create animation marker and trail
         if (this.interpolatedPoints.length > 0) {
             const firstPoint = this.interpolatedPoints[0];
             this.animationMarker = L.marker([firstPoint.lat, firstPoint.lon], {
@@ -291,6 +303,15 @@ class GPXLoader {
                     iconSize: [16, 16],
                     iconAnchor: [8, 8]
                 })
+            }).addTo(this.map);
+            
+            // Initialize trail polyline
+            this.trailPolyline = L.polyline([], {
+                color: '#000000',
+                weight: 6,
+                opacity: this.showTrail ? 0.8 : 0,
+                lineCap: 'round',
+                lineJoin: 'round'
             }).addTo(this.map);
         }
     }
@@ -425,6 +446,11 @@ class GPXLoader {
             const point = this.interpolatedPoints[this.currentPointIndex];
             this.animationMarker.setLatLng([point.lat, point.lon]);
             
+            // Update trail if enabled
+            if (this.showTrail) {
+                this.updateTrail(point);
+            }
+            
             // Zoom to the current point if auto-zoom is enabled
             if (this.autoZoom) {
                 this.map.setView([point.lat, point.lon], 25, {
@@ -456,6 +482,9 @@ class GPXLoader {
             const firstPoint = this.interpolatedPoints[0];
             this.animationMarker.setLatLng([firstPoint.lat, firstPoint.lon]);
             
+            // Reset trail
+            this.resetTrail();
+            
             // Reset map view to show all tracks
             this.fitMapToTracks();
         }
@@ -464,6 +493,26 @@ class GPXLoader {
     restartAnimation() {
         this.pauseAnimation();
         this.playAnimation();
+    }
+    
+    updateTrail(point) {
+        if (!this.trailPolyline) return;
+        
+        // Add current point to trail
+        this.trailPoints.push([point.lat, point.lon]);
+        
+        // Update the polyline with all trail points
+        this.trailPolyline.setLatLngs(this.trailPoints);
+    }
+    
+    resetTrail() {
+        if (!this.trailPolyline) return;
+        
+        // Clear trail points
+        this.trailPoints = [];
+        
+        // Reset polyline
+        this.trailPolyline.setLatLngs([]);
     }
     
     async exportVideo() {
