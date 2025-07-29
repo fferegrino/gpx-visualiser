@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPX File Loader</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GPX File Loader</h1>
+            <p>Upload and view your GPX files</p>
+        </header>
+        
+        <main>
+            <div class="upload-section">
+                <div class="file-drop-zone" id="dropZone">
+                    <div class="drop-zone-content">
+                        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7,10 12,15 17,10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <h3>Drop your GPX file here</h3>
+                        <p>or click to browse</p>
+                        <input type="file" id="fileInput" accept=".gpx" hidden>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="file-info" id="fileInfo" style="display: none;">
+                <h3>File Information</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label">File Name:</span>
+                        <span class="value" id="fileName">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">File Size:</span>
+                        <span class="value" id="fileSize">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Track Points:</span>
+                        <span class="value" id="trackPoints">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Total Distance:</span>
+                        <span class="value" id="totalDistance">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="track-data" id="trackData" style="display: none;">
+                <h3>Track Data</h3>
+                <div class="data-container">
+                    <div class="track-points" id="trackPointsList">
+                        <!-- Track points will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html> 
