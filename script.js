@@ -429,6 +429,43 @@ class GPXLoader {
         return rotation;
     }
     
+    averageBearings(bearings) {
+        // Convert to unit vectors and average
+        let sumX = 0;
+        let sumY = 0;
+    
+        for (const b of bearings) {
+            const rad = this.toRadians(b);
+            sumX += Math.cos(rad);
+            sumY += Math.sin(rad);
+        }
+    
+        const avgRad = Math.atan2(sumY, sumX);
+        return (this.toDegrees(avgRad) + 360) % 360;
+    }
+    
+    getSmoothedRotation(points, index, lookahead = 30) {
+        const bearings = [];
+    
+        for (let i = 1; i <= lookahead; i++) {
+            const from = points[index];
+            const toIndex = index + i;
+    
+            if (toIndex >= points.length) break;
+    
+            const to = points[toIndex];
+            const b = this.calculateBearing(from.lat, from.lon, to.lat, to.lon);
+            bearings.push(b);
+        }
+    
+        if (bearings.length === 0) return 0;
+    
+        const smoothedBearing = this.averageBearings(bearings);
+        return -smoothedBearing; // Rotate so direction faces up (north)
+    }
+
+
+
     displayTimingInfo() {
         const timingInfo = document.getElementById('timingInfo');
         const durationValue = document.getElementById('durationValue');
@@ -485,14 +522,16 @@ class GPXLoader {
             
             // Zoom to the current point if auto-zoom is enabled
             if (this.autoZoom) {
-                this.map.setView([point.lat, point.lon], 25, {
+                this.map.setView([point.lat, point.lon], 17, {
                     animate: true,
                     duration: 0.5
                 });
 
-                let rotationAngle = this.calculateRotationAngle(point.lat, point.lon, this.interpolatedPoints[this.currentPointIndex + 1].lat, this.interpolatedPoints[this.currentPointIndex + 1].lon);
-                this.mapContainer.style.transform = `rotate(${rotationAngle}deg)`;
+                let rotationAngle = this.getSmoothedRotation(this.interpolatedPoints, this.currentPointIndex);
 
+                if (Math.abs(rotationAngle - this.currentRotation) > 2) {
+                    this.mapContainer.style.transform = `rotate(${rotationAngle}deg)`;
+                }
                 this.currentRotation = rotationAngle;
 
             }
