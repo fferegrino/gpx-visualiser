@@ -19,7 +19,8 @@ class GPXLoader {
         this.animationSpeed = 1;
         this.autoZoom = true;
         this.showTrail = true;
-        
+        this.followDirection = true;
+        this.showMask = true;
         // Export properties
         this.isExporting = false;
         this.exportFrames = [];
@@ -77,6 +78,16 @@ class GPXLoader {
             if (this.trailPolyline) {
                 this.trailPolyline.setStyle({ opacity: this.showTrail ? 0.8 : 0 });
             }
+        });
+
+        document.getElementById('followDirectionCheckbox').addEventListener('change', (e) => {
+            this.followDirection = e.target.checked;
+        });
+
+        document.getElementById('showMaskCheckbox').addEventListener('change', (e) => {
+            this.showMask = e.target.checked;
+            this.mapContainer.style.mask = this.showMask ? 'radial-gradient(circle at center, black 0%, black 70%,  transparent 70%)' : 'none';
+            this.mapContainer.style.webkitMask = this.showMask ? 'radial-gradient(circle at center, black 0%, black 70%,  transparent 70%)' : 'none';
         });
         
         document.getElementById('exportButton').addEventListener('click', () => {
@@ -527,12 +538,17 @@ class GPXLoader {
                     duration: 0.5
                 });
 
-                let rotationAngle = this.getSmoothedRotation(this.interpolatedPoints, this.currentPointIndex);
+                if (this.followDirection) {
+                    let rotationAngle = this.getSmoothedRotation(this.interpolatedPoints, this.currentPointIndex);
 
-                if (Math.abs(rotationAngle - this.currentRotation) > 2) {
-                    this.mapContainer.style.transform = `rotate(${rotationAngle}deg)`;
+                    if (Math.abs(rotationAngle - this.currentRotation) > 2) {
+                        this.mapContainer.style.transform = `rotate(${rotationAngle}deg)`;
+                    }
+                    this.currentRotation = rotationAngle;
                 }
-                this.currentRotation = rotationAngle;
+                else {
+                    this.mapContainer.style.transform = `rotate(0deg)`;
+                }
 
             }
             

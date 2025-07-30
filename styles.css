@@ -431,6 +431,8 @@ header p {
     border-radius: 8px;
     margin: 0 auto;
     display: block;
+    -webkit-mask: radial-gradient(circle at center, black 0%, black 70%,  transparent 770%);
+    mask: radial-gradient(circle at center, black 0%, black 70%,  transparent 70%);
 }
 
 .track-header, .segment-header {
