@@ -18,6 +18,7 @@ class GPXLoader {
         this.isPlaying = false;
         this.animationSpeed = 1;
         this.autoZoom = true;
+        this.zoomLevel = 13;
         this.showTrail = true;
         this.followDirection = true;
         this.showMask = true;
@@ -64,6 +65,14 @@ class GPXLoader {
         document.getElementById('speedSlider').addEventListener('input', (e) => {
             this.animationSpeed = parseFloat(e.target.value);
             document.getElementById('speedValue').textContent = this.animationSpeed + 'x';
+            if (this.isPlaying) {
+                this.restartAnimation();
+            }
+        });
+
+        document.getElementById('zoomSlider').addEventListener('input', (e) => {
+            this.zoomLevel = parseInt(e.target.value);
+            document.getElementById('zoomValue').textContent = this.zoomLevel;
             if (this.isPlaying) {
                 this.restartAnimation();
             }
@@ -455,12 +464,29 @@ class GPXLoader {
         return (this.toDegrees(avgRad) + 360) % 360;
     }
     
-    getSmoothedRotation(points, index, lookahead = 30) {
+    getSmoothedRotation(points, index, surrounding_points = 10, offset = 10) {
         const bearings = [];
+
+        let start = index - surrounding_points;
+        let end = index + surrounding_points + 1;
+
+        start = start + offset;
+        end = end + offset;
+
+        if (start < 0) {
+            end = end - start;
+            start = start - start;
+        }
+        else if (end > points.length) {
+            start = start - (end - points.length);
+            end = end - (end - points.length);
+        }
+
+        console.log(`[${start}, ${end - 1}]`);
     
-        for (let i = 1; i <= lookahead; i++) {
-            const from = points[index];
-            const toIndex = index + i;
+        for (let i = start; i < end; i++) {
+            const from = points[i];
+            const toIndex = i + 1;
     
             if (toIndex >= points.length) break;
     
@@ -533,7 +559,7 @@ class GPXLoader {
             
             // Zoom to the current point if auto-zoom is enabled
             if (this.autoZoom) {
-                this.map.setView([point.lat, point.lon], 17, {
+                this.map.setView([point.lat, point.lon], this.zoomLevel, {
                     animate: true,
                     duration: 0.5
                 });
